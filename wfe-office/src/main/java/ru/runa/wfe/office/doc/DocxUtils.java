@@ -87,76 +87,88 @@ public class DocxUtils {
     }
 
     public static void setCellText(final XWPFTableCell cell, String text) {
-        if (cell.getParagraphs().size() > 0 && cell.getParagraphs().get(0).getRuns().size() > 0) {
-            new SafeIndefiniteLoop(100) {
+        String value = text != null ? text : "";
 
-                @Override
-                protected void doOp() {
-                    cell.removeParagraph(1);
-                }
-
-                @Override
-                protected boolean continueLoop() {
-                    return cell.getParagraphs().size() > 1;
-                }
-            }.doLoop();
-            final XWPFParagraph paragraph0 = cell.getParagraphs().get(0);
-            new SafeIndefiniteLoop(100) {
-
-                @Override
-                protected void doOp() {
-                    paragraph0.removeRun(1);
-                }
-
-                @Override
-                protected boolean continueLoop() {
-                    return paragraph0.getRuns().size() > 1;
-                }
-            }.doLoop();
-            XWPFRun run = paragraph0.getRuns().get(0);
-            if (text.contains(LINE_DELIMITER)) {
-                StringTokenizer tokenizer = new StringTokenizer(text, LINE_DELIMITER);
-                while (tokenizer.hasMoreTokens()) {
-                    run.setText(tokenizer.nextToken(), 0);
-                    if (tokenizer.hasMoreTokens()) {
-                        run.addBreak();
-                        run = paragraph0.insertNewRun(paragraph0.getRuns().indexOf(run) + 1);
-                    }
-                }
-            } else {
-                run.setText(text, 0);
-            }
+        XWPFParagraph paragraph;
+        if (cell.getParagraphs().isEmpty()) {
+            paragraph = cell.addParagraph();
         } else {
-            cell.setText(text != null ? text : "");
-            log.warn("no paragraphs or empty one, using raw text insert");
+            paragraph = cell.getParagraphs().get(0);
         }
+
+        XWPFRun run;
+        if (paragraph.getRuns().isEmpty()) {
+            run = paragraph.createRun();
+        } else {
+            run = paragraph.getRuns().get(0);
+        }
+
+        run.setText(value, 0);
+
+        for (int i = paragraph.getRuns().size() - 1; i > 0; i--) {
+            paragraph.removeRun(i);
+        }
+
+        removeExtraParagraphsSafely(cell);
     }
 
     public static void setCellText(XWPFTableCell cell, String text, XWPFTableCell templateCell) {
+        String value = text != null ? text : "";
+
         if (templateCell != null) {
             copyCellStyles(cell, templateCell);
         }
-        if (templateCell != null && templateCell.getParagraphs().size() > 0 && templateCell.getParagraphs().get(0).getRuns().size() > 0) {
-            XWPFParagraph paragraph0;
-            if (cell.getParagraphs().size() > 0) {
-                paragraph0 = cell.getParagraphs().get(0);
-            } else {
-                paragraph0 = cell.addParagraph();
-            }
-            XWPFParagraph templateParagraph = templateCell.getParagraphs().get(0);
-            copyStyles(paragraph0, templateParagraph);
-            XWPFRun run0;
-            if (paragraph0.getRuns().size() > 0) {
-                run0 = paragraph0.getRuns().get(0);
-            } else {
-                run0 = paragraph0.createRun();
-            }
-            copyStyles(run0, templateCell.getParagraphs().get(0).getRuns().get(0));
-            run0.setText(text != null ? text : "", 0);
+
+        XWPFParagraph paragraph;
+        if (cell.getParagraphs().isEmpty()) {
+            paragraph = cell.addParagraph();
         } else {
-            cell.setText(text != null ? text : "");
-            log.warn("null or invalid template cell, using raw text insert");
+            paragraph = cell.getParagraphs().get(0);
         }
+
+        if (templateCell != null && !templateCell.getParagraphs().isEmpty()) {
+            XWPFParagraph templateParagraph = templateCell.getParagraphs().get(0);
+            copyStyles(paragraph, templateParagraph);
+        }
+
+        XWPFRun run;
+        if (paragraph.getRuns().isEmpty()) {
+            run = paragraph.createRun();
+        } else {
+            run = paragraph.getRuns().get(0);
+        }
+
+        if (templateCell != null
+                && !templateCell.getParagraphs().isEmpty()
+                && !templateCell.getParagraphs().get(0).getRuns().isEmpty()) {
+
+            copyStyles(run, templateCell.getParagraphs().get(0).getRuns().get(0));
+        }
+
+        run.setText(value, 0);
+
+        for (int i = paragraph.getRuns().size() - 1; i > 0; i--) {
+            paragraph.removeRun(i);
+        }
+
+        removeExtraParagraphsSafely(cell);
+    }
+
+    private static void removeExtraParagraphsSafely(final XWPFTableCell cell) {
+        new SafeIndefiniteLoop(100) {
+            private int previousSize = -1;
+
+            @Override
+            protected void doOp() {
+                previousSize = cell.getParagraphs().size();
+                cell.removeParagraph(1);
+            }
+
+            @Override
+            protected boolean continueLoop() {
+                return cell.getParagraphs().size() > 1 && cell.getParagraphs().size() < previousSize;
+            }
+        }.doLoop();
     }
 
     private static Object executeGroovy(VariableProvider variableProvider, String script) {
@@ -615,10 +627,11 @@ public class DocxUtils {
                 ctTcPr = cell.getCTTc().addNewTcPr();
             }
             if (templateCell.getCTTc().getTcPr().isSetTcBorders()) {
-                ctTcPr.setTcBorders(templateCell.getCTTc().getTcPr().getTcBorders());
+                ctTcPr.setTcBorders((org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders) templateCell.getCTTc().getTcPr()
+                        .getTcBorders().copy());
             }
             if (templateCell.getCTTc().getTcPr().isSetShd()) {
-                ctTcPr.setShd(templateCell.getCTTc().getTcPr().getShd());
+                ctTcPr.setShd((org.openxmlformats.schemas.wordprocessingml.x2006.main.CTShd) templateCell.getCTTc().getTcPr().getShd().copy());
             }
         }
     }

@@ -59,6 +59,9 @@ public class TableExpansionOperation extends Operation {
     }
 
     public String getStringValue(DocxConfig config, VariableProvider variableProvider, int columnIndex, int rowIndex) {
+        if (columnIndex >= operations.size()) {
+            return null;
+        }
         ColumnExpansionOperation operation = operations.get(columnIndex);
         if (operation != null) {
             Object key;
@@ -77,7 +80,14 @@ public class TableExpansionOperation extends Operation {
     }
     
     public boolean isIndexOrNumberColumnExpansitonOperation(int columnIndex) {
-        IterateBy iterateBy = operations.get(columnIndex).iterateBy;
+        if (columnIndex >= operations.size()) {
+            return false;
+        }
+        ColumnExpansionOperation operation = operations.get(columnIndex);
+        if (operation == null) {
+            return false;
+        }
+        IterateBy iterateBy = operation.iterateBy;
         return IterateBy.indexes.equals(iterateBy) || IterateBy.numbers.equals(iterateBy);
     }
 

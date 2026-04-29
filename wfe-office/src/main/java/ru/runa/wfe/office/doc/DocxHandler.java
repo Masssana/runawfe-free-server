@@ -22,7 +22,7 @@ public class DocxHandler extends OfficeFilesSupplierHandler<DocxConfig> {
         Map<String, Object> result = Maps.newHashMap();
         InputStream templateInputStream = config.getFileInputStream(variableProvider, fileDataProvider, true);
         XWPFDocument document;
-        if (config.getTables().size() > 0) {
+        if (usesLegacyTableConfig()) {
             log.warn("Using deprecated pre 4.0.6 changer for table configs");
             DocxFileChangerPre406 fileChanger = new DocxFileChangerPre406(config, variableProvider, templateInputStream);
             document = fileChanger.changeAll();
@@ -34,5 +34,18 @@ public class DocxHandler extends OfficeFilesSupplierHandler<DocxConfig> {
         document.write(outputStream);
         outputStream.close();
         return result;
+    }
+
+    private boolean usesLegacyTableConfig() {
+        for (DocxConfig.TableConfig tableConfig : config.getTables().values()) {
+            if (!isNewTableConfig(tableConfig)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isNewTableConfig(DocxConfig.TableConfig tableConfig) {
+        return tableConfig != null && tableConfig.getListVariableName() != null && !tableConfig.getListVariableName().isEmpty();
     }
 }

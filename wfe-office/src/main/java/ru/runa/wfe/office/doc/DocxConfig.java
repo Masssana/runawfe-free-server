@@ -72,6 +72,7 @@ public class DocxConfig extends FilesSupplierConfig {
     public static class TableConfig {
         private boolean addBreak;
         private String styleName;
+        private String listVariableName;
         private final List<String> columns = Lists.newArrayList();
 
         public void setAddBreak(boolean addBreak) {
@@ -93,5 +94,14 @@ public class DocxConfig extends FilesSupplierConfig {
         public List<String> getColumns() {
             return columns;
         }
+
+        public String getListVariableName() {
+            return listVariableName;
+        }
+
+        public void setListVariableName(String listVariableName) {
+            this.listVariableName = listVariableName;
+        }
+
     }
 }
